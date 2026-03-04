@@ -1,0 +1,33 @@
+# gärtnerjob.ch
+
+> Die spezialisierte Jobbörse für Garten-Fachkräfte in der Schweiz.
+
+gärtnerjob.ch ist eine Nischen-Jobbörse für die Schweizer Garten- und Landschaftsbaubranche. Die Plattform richtet sich an Landschaftsgärtner EFZ, Gärtner Zierpflanzen EFZ, Gärtner Stauden EFZ, Baumpfleger, Gartenplaner, Vorarbeiter Gartenbau, Gartenbaupoliere, Greenkeeper, Baumschulisten, Friedhofsgärtner, Gartenbau-Projektleiter und Pflanzenschutzberater.
+
+## Wichtige Seiten
+
+- [Startseite](https://gaertnerjob.ch/): Jobsuche mit Filtern nach Beruf, Ort, Umkreis, Pensum
+- [Landschaftsgärtner EFZ Jobs Zürich](https://gaertnerjob.ch/gaertnerjobs/landschaftsgaertner-efz/zh): Beispiel-Landingpage
+- [Sitemap](https://gaertnerjob.ch/sitemap.xml): Alle verfügbaren Seiten
+
+## Kerninformationen
+
+- **Sprache**: Deutsch (Schweizer Markt)
+- **Regionen**: Alle Schweizer Kantone — Zürich, Bern, Basel, Aargau, St. Gallen, Luzern, Solothurn, Zug und weitere
+- **Berufe**: Landschaftsgärtner EFZ, Gärtner Zierpflanzen EFZ, Gärtner Stauden EFZ, Baumpfleger, Gartenplaner, Vorarbeiter Gartenbau, Gartenbaupolier, Greenkeeper, Baumschulist, Friedhofsgärtner, Gartenbau-Projektleiter, Pflanzenschutzberater
+- **Lohndaten (Richtwerte, CHF/Jahr)**:
+  - Gartenbau-Projektleiter: 85'000 – 110'000
+  - Gartenplaner: 80'000 – 100'000
+  - Gartenbaupolier: 78'000 – 98'000
+  - Vorarbeiter Gartenbau: 72'000 – 90'000
+  - Baumpfleger: 68'000 – 88'000
+  - Landschaftsgärtner EFZ: 65'000 – 82'000
+  - Greenkeeper: 62'000 – 80'000
+  - Gärtner Zierpflanzen EFZ: 60'000 – 78'000
+  - Gärtner Stauden EFZ: 60'000 – 78'000
+  - Baumschulist: 60'000 – 78'000
+
+## Kontakt
+
+- **Website**: https://gaertnerjob.ch
+- **Branche**: Personalvermittlung / Jobbörse — Garten- und Landschaftsbau Schweiz
