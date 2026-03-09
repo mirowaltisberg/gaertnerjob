@@ -217,14 +217,18 @@ RELEVANT_TITLE_KEYWORDS = [
     "landschaftspflege",
     "grünpflege",
     "gruenpflege",
+    "grünanlag",
     "baumpflege",
     "baumschul",
     "gehölz",
+    "baumchirurg",
     "zierpflanze",
     "stauden",
     "pflanzung",
+    "pflanz",
     "rasen",
     "rollrasen",
+    "greenkeeper",
     "gartenpflege",
     "gartenunterhalt",
     "bepflanzung",
@@ -240,6 +244,7 @@ RELEVANT_TITLE_KEYWORDS = [
     "polier",
     "bauleiter",
     "projektleiter",
+    "planer",
     "fachmann",
     "fachfrau",
     "fachperson",
@@ -247,7 +252,20 @@ RELEVANT_TITLE_KEYWORDS = [
     "montage",
     "techniker",
     "florist",
+    "blumen",
     "handwerker",
+    "forstarbeit",
+    "forstwart",
+    "wald",
+    "friedhof",
+    "gemüse",
+    "obstbau",
+    "umgebungsarbeit",
+    "aussenanlage",
+    "bagger",
+    "maschinenführer",
+    "gartencenter",
+    "verkauf garten",
 ]
 
 # Titles containing any of these are always rejected
@@ -423,6 +441,24 @@ DEFAULT_SEARCH_TERMS = [
     "Baumschulist",
     "Gartenplaner",
     "Gartenbau Polier",
+    "Landschaftsarchitekt",
+    "Umgebungsarbeiten",
+    "Garten und Landschaftsbau",
+    "Pflasterer",
+    "Baggerführer Gartenbau",
+    "Maschinenführer Gartenbau",
+    "Greenkeeper",
+    "Friedhofgärtner",
+    "Forstarbeiter",
+    "Forstwart",
+    "Naturschutz",
+    "Umwelttechnik",
+    "Florist",
+    "Blumenbinder",
+    "Gemüsegärtner",
+    "Obstbau",
+    "Baumchirurg",
+    "Gartencenter",
 ]
 
 DEFAULT_LOCATIONS = [
@@ -438,6 +474,14 @@ DEFAULT_LOCATIONS = [
     "Lugano, Schweiz",
     "Chur, Schweiz",
     "Sion, Schweiz",
+    "Olten, Schweiz",
+    "Thun, Schweiz",
+    "Frauenfeld, Schweiz",
+    "Zug, Schweiz",
+    "Schaffhausen, Schweiz",
+    "Solothurn, Schweiz",
+    "Rapperswil, Schweiz",
+    "Baden, Schweiz",
 ]
 
 
@@ -737,7 +781,7 @@ def main():
     parser = argparse.ArgumentParser(description="Scrape Swiss electrical jobs")
     parser.add_argument("--query", type=str, help="Single search query")
     parser.add_argument("--location", type=str, help="Single location")
-    parser.add_argument("--results", type=int, default=100, help="Results per query/location combo")
+    parser.add_argument("--results", type=int, default=50, help="Results per query/location combo")
     parser.add_argument("--quick", action="store_true", help="Quick mode: single query only")
     parser.add_argument("--chunk", type=int, default=0, help="Chunk index (0-based) for splitting search terms")
     parser.add_argument("--total-chunks", type=int, default=1, help="Total number of chunks to split search terms into")
