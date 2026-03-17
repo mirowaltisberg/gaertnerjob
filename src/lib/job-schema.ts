@@ -42,7 +42,7 @@ export function buildJobPostingSchema(job: JobListing) {
     industry: "Garten- und Landschaftsbau",
     hiringOrganization: {
       "@type": "Organization",
-      name: job.company,
+      name: job.company?.trim() || "Arbeitgeber auf gaertnerjob.ch",
       ...(job.companyUrl ? { sameAs: job.companyUrl } : {}),
     },
     jobLocation: {
