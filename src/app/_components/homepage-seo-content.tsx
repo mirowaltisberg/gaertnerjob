@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/json-ld";
 // This content is always visible to search engines even though the
 // main job search is client-rendered.
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://gärtnerjob.ch";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gaertnerjob.ch";
 
 const HOMEPAGE_FAQS = [
   {

@@ -23,7 +23,7 @@ import { buildJobPostingSchema } from "@/lib/job-schema";
 
 export const revalidate = 3600;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://gärtnerjob.ch";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gaertnerjob.ch";
 
 interface LandingPageProps {
   params: Promise<{ role: string; canton: string }>;
