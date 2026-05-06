@@ -22,6 +22,7 @@ import { searchJobListings } from "@/lib/job-catalog";
 import type { JobListing } from "@/lib/job-types";
 import { estimateSalary, formatSalaryRange } from "@/lib/salary-estimates";
 import { buildJobPostingSchema } from "@/lib/job-schema";
+import { buildJobSlug } from "@/lib/job-slug";
 import { getEditorialContent } from "@/data/editorial/gaertnerjob";
 import { EditorialIntro } from "@/app/_components/editorial-intro";
 
@@ -35,7 +36,7 @@ interface LandingPageProps {
 
 function buildJobHref(job: JobListing, role: string, canton: string): string {
   if (job.source !== "generated") {
-    return `/jobs/${job.id}`;
+    return `/jobs/${buildJobSlug(job)}`;
   }
 
   const query = job.searchContext?.query ?? role;
@@ -75,7 +76,7 @@ function buildItemListSchema(jobs: JobListing[], config: LandingPageConfig) {
     itemListElement: jobs.slice(0, 20).map((job, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: `${SITE_URL}/jobs/${job.id}`,
+      url: `${SITE_URL}/jobs/${buildJobSlug(job)}`,
       name: job.title,
     })),
   };
@@ -326,6 +327,7 @@ export default async function LandingRolePage({ params }: LandingPageProps) {
           )}
         </section>
 
+        {/* Editorial intro — long-form, AI-citable, only for top-traffic combos */}
         {editorial && (
           <EditorialIntro
             role={config.role}
