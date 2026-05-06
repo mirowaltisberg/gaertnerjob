@@ -277,7 +277,7 @@ function buildGeneratedJob(
     location,
     type,
     workload,
-    description: `Für ${company} suchen wir eine motivierte Fachperson ${focusText}. Sie arbeiten in ${projectType} ${regionText} und begleiten Gartenbau-Projekte von der Planung bis zur Fertigstellung.`,
+    description: `Wir suchen eine motivierte Fachperson ${focusText}. Sie arbeiten in ${projectType} ${regionText} und begleiten Gartenbau-Projekte von der Planung bis zur Fertigstellung.`,
     responsibilities,
     requirements,
     benefits,
