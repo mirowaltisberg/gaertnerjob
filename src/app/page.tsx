@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/json-ld";
 import { buildJobPostingSchema } from "@/lib/job-schema";
 
 export const metadata: Metadata = {
-  title: "Gärtner Jobs Schweiz 2026 | Offene Stellen finden",
+  title: "521 Gärtner Jobs Schweiz 2026 | Offene Stellen finden",
   description:
     "Finde aktuelle Gärtner Jobs in der Schweiz. Stellen für Landschaftsgärtner, Gartenbauer, Baumpfleger, Gartenplaner & mehr. Jetzt Lebenslauf einreichen.",
   alternates: { canonical: "/" },
