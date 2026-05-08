@@ -19,11 +19,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.gaertnerjob.ch
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "678 Gärtner Jobs Schweiz 2026 | Offene Stellen finden",
+    default: "Gartenbau Jobs Schweiz 2026 | Stellen, Lohn & Ausbildung",
     template: "%s | gärtnerjob.ch",
   },
   description:
-    "Finde aktuelle Gärtner Jobs in der Schweiz. Stellen für Landschaftsgärtner, Gartenbauer, Baumpfleger, Gartenplaner & mehr. Jetzt Lebenslauf einreichen.",
+    "Gartenbau Jobs Schweiz: Gärtner EFZ, Landschaftsgärtner, Vorarbeiter, Baumpflege, Projektleiter. Lohn, Ausbildung, GAV JardinSuisse — täglich aktualisierte Stellen.",
   keywords: [
     "Gärtnerjobs",
     "678 Gärtner Jobs Schweiz",
