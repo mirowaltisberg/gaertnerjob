@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useHaptic } from "@/hooks/use-haptic";
 import Link from "next/link";
-import Image from "next/image";
-import dynamic from "next/dynamic";
 import {
-  Building2,
+  ArrowRight,
+  ArrowUpWideNarrow,
   CalendarDays,
   Clock,
   FilterX,
@@ -15,9 +15,8 @@ import {
   MapPin,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Wallet,
-  WifiOff,
-  Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchDropdown } from "@/components/search-dropdown";
@@ -25,31 +24,30 @@ import { HeaderDropdownMenu } from "@/components/header-dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { JobFacets, JobListing, JobSort, RemoteFilter } from "@/lib/job-types";
-import { AnimateOnScroll } from "@/components/animate-on-scroll";
-import { StaggeredList } from "@/components/staggered-list";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { FEATURE_FLAGS } from "@/lib/feature-flags";
 import { trackEvent } from "@/lib/analytics";
-import { calculateDistanceKm, getRegionRadius, resolveLocationCoordinate, type Coordinate } from "@/lib/location-distance";
-import { estimateSalary, formatSalaryRange } from "@/lib/salary-estimates";
-import { buildJobSlug } from "@/lib/job-slug";
-
-const MobileFilterBar = dynamic(() => import("./mobile-filter-bar"), {
-  ssr: false,
-});
+import { TOP_LANDING_PAGES, getLandingPath } from "@/lib/landing-pages";
+import { SiteBrand } from "@/components/site-brand";
+import { formatSwissDate, formatSwissDateTime } from "@/lib/date-format";
+import { DirectHireOpportunityFeed } from "@/components/direct-hire-opportunity-feed";
+import type { DirectHireOpportunity } from "@/lib/direct-hire-opportunities";
 
 const JOB_SUGGESTIONS = [
+  "Gärtner EFZ",
   "Landschaftsgärtner",
-  "Gärtner Zierpflanzen",
+  "Kundengärtner",
   "Baumpfleger",
-  "Gartenplaner",
+  "Gärtner Pflanzenproduktion",
+  "Bauleiter Gartenbau",
   "Vorarbeiter Gartenbau",
-  "Gartenbaupolier",
-  "Greenkeeper",
-  "Baumschulist",
-  "Friedhofsgärtner",
-  "Gartenbau-Projektleiter",
-  "Pflanzenschutzberater",
-  "Gärtner Stauden",
 ];
 
 const LOCATION_SUGGESTIONS = [
@@ -88,11 +86,21 @@ const EMPLOYER_MENU_ITEMS = [
 ];
 
 const PAGE_SIZE = 12;
-const INITIAL_MOBILE_PAGE_SIZE = 5;
-const MOBILE_LOAD_MORE_SIZE = 12;
-const FALLBACK_GENERATED_COUNT = 150;
 const SCRAPE_STALE_HOURS = 72;
 const DEFAULT_RADIUS_KM = "25";
+const REGION_RADIUS_KM: Record<string, string> = {
+  "grossraum zürich": "50",
+  "grossraum zurich": "50",
+  zentralschweiz: "50",
+  nordwestschweiz: "50",
+  ostschweiz: "80",
+  mittelland: "50",
+  "westschweiz / romandie": "80",
+  westschweiz: "80",
+  romandie: "80",
+  tessin: "50",
+  wallis: "50",
+};
 const COUNTRY_WIDE_LOCATIONS = new Set([
   "schweiz",
   "ganze schweiz",
@@ -124,12 +132,12 @@ const DEFAULT_FACETS: JobFacets = {
 
 interface JobsApiResponse {
   jobs: JobListing[];
+  opportunities: DirectHireOpportunity[];
   total: number;
   offset: number;
   limit: number;
   facets: JobFacets;
   scrapedAt: string | null;
-  fallbackUsed: boolean;
 }
 
 function normalize(value: string): string {
@@ -149,156 +157,8 @@ function normalizeLocationFilter(value: string): string {
   return trimmed;
 }
 
-function parseRadiusKm(value: string): number | null {
-  if (!value || value === "all") {
-    return null;
-  }
-
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return parsed;
-}
-
-function getCoordinate(cache: Map<string, Coordinate | null>, value: string): Coordinate | null {
-  const key = normalize(value);
-  if (!key) {
-    return null;
-  }
-
-  if (cache.has(key)) {
-    return cache.get(key) ?? null;
-  }
-
-  const coordinate = resolveLocationCoordinate(value);
-  cache.set(key, coordinate);
-  return coordinate;
-}
-
-function matchesLocationWithRadius(
-  jobLocation: string,
-  activeLocation: string,
-  radiusKm: string,
-  coordinateCache: Map<string, Coordinate | null>
-): boolean {
-  if (!activeLocation) {
-    return true;
-  }
-
-  const radius = parseRadiusKm(radiusKm);
-  if (!radius) {
-    return matchesTextFilter(jobLocation, activeLocation);
-  }
-
-  const originCoordinate = getCoordinate(coordinateCache, activeLocation);
-  if (!originCoordinate) {
-    return matchesTextFilter(jobLocation, activeLocation);
-  }
-
-  const jobCoordinate = getCoordinate(coordinateCache, jobLocation);
-  if (!jobCoordinate) {
-    return matchesTextFilter(jobLocation, activeLocation);
-  }
-
-  return calculateDistanceKm(originCoordinate, jobCoordinate) <= radius;
-}
-
-function matchesTextFilter(value: string, filter: string): boolean {
-  const normalizedFilter = normalize(filter);
-  if (!normalizedFilter || normalizedFilter === "all") {
-    return true;
-  }
-
-  return normalize(value).includes(normalizedFilter);
-}
-
-function matchesRemoteFilter(job: JobListing, remote: RemoteFilter): boolean {
-  if (remote === "any") {
-    return true;
-  }
-  if (remote === "true") {
-    return job.isRemote === true;
-  }
-  return job.isRemote === false;
-}
-
-function matchesPostedWithin(job: JobListing, postedWithinDays: string): boolean {
-  if (!postedWithinDays || postedWithinDays === "all") {
-    return true;
-  }
-
-  const days = Number(postedWithinDays);
-  if (!Number.isFinite(days) || days <= 0) {
-    return true;
-  }
-
-  const postedDate = Date.parse(job.datePosted);
-  if (!Number.isFinite(postedDate)) {
-    return false;
-  }
-
-  const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
-  return postedDate >= threshold;
-}
-
-function sortJobs(jobs: JobListing[], sort: JobSort): JobListing[] {
-  return [...jobs].sort((a, b) => {
-    if (sort === "oldest") {
-      return Date.parse(a.datePosted) - Date.parse(b.datePosted);
-    }
-
-    if (sort === "relevance") {
-      const relevanceDiff = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-      if (relevanceDiff !== 0) {
-        return relevanceDiff;
-      }
-    }
-
-    return Date.parse(b.datePosted) - Date.parse(a.datePosted);
-  });
-}
-
-function buildFacets(jobs: JobListing[]): JobFacets {
-  const typeMap = new Map<string, number>();
-  const workloadMap = new Map<string, number>();
-  const remote = {
-    true: 0,
-    false: 0,
-    unknown: 0,
-  };
-
-  for (const job of jobs) {
-    const type = job.type.trim();
-    const workload = job.workload.trim();
-
-    if (type) {
-      typeMap.set(type, (typeMap.get(type) ?? 0) + 1);
-    }
-    if (workload) {
-      workloadMap.set(workload, (workloadMap.get(workload) ?? 0) + 1);
-    }
-
-    if (job.isRemote === true) {
-      remote.true += 1;
-    } else if (job.isRemote === false) {
-      remote.false += 1;
-    } else {
-      remote.unknown += 1;
-    }
-  }
-
-  const toFacetArray = (map: Map<string, number>) =>
-    [...map.entries()]
-      .map(([value, count]) => ({ value, count }))
-      .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, "de-CH"));
-
-  return {
-    types: toFacetArray(typeMap),
-    workloads: toFacetArray(workloadMap),
-    remote,
-  };
+function getRegionRadius(location: string): string | null {
+  return REGION_RADIUS_KM[normalize(location)] ?? null;
 }
 
 function isScrapedStale(scrapedAt: string | null): boolean {
@@ -314,61 +174,97 @@ function isScrapedStale(scrapedAt: string | null): boolean {
   return Date.now() - parsed > SCRAPE_STALE_HOURS * 60 * 60 * 1000;
 }
 
-function isGeneratedJob(job: JobListing): boolean {
-  return job.source === "generated";
-}
-
-function isScrapedJob(job: JobListing): boolean {
-  return job.source === "scraped";
-}
-
 interface InitialJobData {
   jobs: JobListing[];
+  opportunities: DirectHireOpportunity[];
   total: number;
   offset: number;
   limit: number;
   facets: JobFacets;
   scrapedAt: string | null;
-  fallbackUsed: boolean;
 }
 
-interface HomepageSearchProps {
+export interface HomepageSearchProps {
   initialData?: InitialJobData;
+  initialFilters?: HomepageInitialFilters;
+  heroContent: ReactNode;
 }
 
-export function HomepageSearch({ initialData }: HomepageSearchProps) {
+export interface HomepageInitialFilters {
+  q: string;
+  loc: string;
+  radiusKm: string;
+  type: string;
+  workload: string;
+  remote: RemoteFilter;
+  postedWithinDays: string;
+  sort: JobSort;
+}
+
+const DEFAULT_INITIAL_FILTERS: HomepageInitialFilters = {
+  q: "",
+  loc: "",
+  radiusKm: DEFAULT_RADIUS_KM,
+  type: "all",
+  workload: "all",
+  remote: "any",
+  postedWithinDays: "30",
+  sort: "newest",
+};
+
+function hasActiveInitialFilters(filters: HomepageInitialFilters): boolean {
+  return Boolean(
+    filters.q ||
+      normalizeLocationFilter(filters.loc) ||
+      filters.radiusKm !== DEFAULT_RADIUS_KM ||
+      filters.type !== "all" ||
+      filters.workload !== "all" ||
+      filters.remote !== "any" ||
+      filters.postedWithinDays !== "30" ||
+      filters.sort !== "newest",
+  );
+}
+
+export function HomepageSearch({ initialData, initialFilters, heroContent }: HomepageSearchProps) {
+  const seededFilters = initialFilters ?? DEFAULT_INITIAL_FILTERS;
   const { trigger } = useHaptic();
-  const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
-  const [activeQuery, setActiveQuery] = useState("");
-  const [activeLocation, setActiveLocation] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
+  const [query, setQuery] = useState(seededFilters.q);
+  const [location, setLocation] = useState(seededFilters.loc);
+  const [activeQuery, setActiveQuery] = useState(seededFilters.q);
+  const [activeLocation, setActiveLocation] = useState(
+    normalizeLocationFilter(seededFilters.loc),
+  );
+  const [hasSearched, setHasSearched] = useState(hasActiveInitialFilters(seededFilters));
 
   const [jobs, setJobs] = useState<JobListing[]>(initialData?.jobs ?? []);
+  const [opportunities, setOpportunities] = useState<DirectHireOpportunity[]>(initialData?.opportunities ?? []);
   const [totalJobs, setTotalJobs] = useState(initialData?.total ?? 0);
   const [facets, setFacets] = useState<JobFacets>(initialData?.facets ?? DEFAULT_FACETS);
   const [scrapedAt, setScrapedAt] = useState<string | null>(initialData?.scrapedAt ?? null);
-  const [fallbackUsed, setFallbackUsed] = useState(initialData?.fallbackUsed ?? false);
   const [searchKey, setSearchKey] = useState(0);
+  const [searchRevision, setSearchRevision] = useState(0);
 
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [workloadFilter, setWorkloadFilter] = useState("all");
-  const [remoteFilter, setRemoteFilter] = useState<RemoteFilter>("any");
-  const [postedWithinDays, setPostedWithinDays] = useState("30");
-  const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
-  const [sortBy, setSortBy] = useState<JobSort>("newest");
+  const [typeFilter, setTypeFilter] = useState(seededFilters.type);
+  const [workloadFilter, setWorkloadFilter] = useState(seededFilters.workload);
+  const [remoteFilter, setRemoteFilter] = useState<RemoteFilter>(seededFilters.remote);
+  const [postedWithinDays, setPostedWithinDays] = useState(seededFilters.postedWithinDays);
+  const [radiusKm, setRadiusKm] = useState(seededFilters.radiusKm);
+  const [sortBy, setSortBy] = useState<JobSort>(seededFilters.sort);
 
   const [isLoading, setIsLoading] = useState(!initialData);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const hasTrackedFilterChange = useRef(false);
-  const coordinateCacheRef = useRef<Map<string, Coordinate | null>>(new Map());
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
-  const isMobileRef = useRef(false);
-  const [isMobile, setIsMobile] = useState(false);
-
+  const hasVisibleJobsRef = useRef(Boolean(initialData?.jobs.length));
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchRequestRef = useRef(0);
+  const loadMoreInFlightRef = useRef(false);
   const [plzSuggestions, setPlzSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -389,13 +285,13 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
     return () => { clearTimeout(timer); controller.abort(); };
   }, [location]);
 
-  // Auto-set radius when a region is selected
-  useEffect(() => {
-    const regionRadius = getRegionRadius(location);
+  const handleLocationChange = (nextLocation: string) => {
+    setLocation(nextLocation);
+    const regionRadius = getRegionRadius(nextLocation);
     if (regionRadius !== null) {
-      setRadiusKm(String(regionRadius));
+      setRadiusKm(regionRadius);
     }
-  }, [location]);
+  };
 
   const locationDropdownSuggestions = useMemo(() => {
     const normalizedInput = location.trim();
@@ -423,116 +319,98 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
     }
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const update = () => {
-      const mobile = mq.matches;
-      isMobileRef.current = mobile;
-      setIsMobile(mobile);
-    };
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
   const runSearch = useCallback(
     async (append: boolean, offsetOverride = 0) => {
+      if (append && loadMoreInFlightRef.current) {
+        return;
+      }
+
       const nextOffset = append ? offsetOverride : 0;
       const scopedLocation = normalizeLocationFilter(activeLocation);
-      const mobile = isMobileRef.current;
-      const limit = append
-        ? (mobile ? MOBILE_LOAD_MORE_SIZE : PAGE_SIZE)
-        : (mobile ? INITIAL_MOBILE_PAGE_SIZE : PAGE_SIZE);
+      const requestId = searchRequestRef.current + 1;
+      searchRequestRef.current = requestId;
+      searchAbortRef.current?.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
 
       setErrorMessage(null);
       if (append) {
+        loadMoreInFlightRef.current = true;
         setIsLoadingMore(true);
+      } else if (hasVisibleJobsRef.current) {
+        setIsRefreshing(true);
       } else {
         setIsLoading(true);
       }
 
       try {
-        if (FEATURE_FLAGS.apiSearch) {
-          const params = new URLSearchParams({
-            q: activeQuery,
-            loc: scopedLocation,
-            limit: String(limit),
-            offset: String(nextOffset),
-            sort: sortBy,
-            remote: remoteFilter,
-          });
+        const params = new URLSearchParams({
+          q: activeQuery,
+          loc: scopedLocation,
+          limit: String(PAGE_SIZE),
+          offset: String(nextOffset),
+          sort: sortBy,
+          remote: remoteFilter,
+        });
 
-          if (typeFilter !== "all") {
-            params.set("type", typeFilter);
-          }
-          if (workloadFilter !== "all") {
-            params.set("workload", workloadFilter);
-          }
-          if (postedWithinDays !== "all") {
-            params.set("postedWithinDays", postedWithinDays);
-          }
-          if (scopedLocation && radiusKm !== "all") {
-            params.set("radiusKm", radiusKm);
-          }
-
-          const response = await fetch(`/api/jobs?${params.toString()}`);
-          if (!response.ok) {
-            throw new Error("Die Jobs konnten nicht geladen werden.");
-          }
-
-          const data = (await response.json()) as JobsApiResponse;
-          setJobs((prev) => (append ? [...prev, ...data.jobs] : data.jobs));
-          setTotalJobs(data.total);
-          setFacets(data.facets ?? DEFAULT_FACETS);
-          setScrapedAt(data.scrapedAt ?? null);
-          setFallbackUsed(Boolean(data.fallbackUsed));
-        } else {
-          const { normalizeSearchInput, generateFakeJobs } = await import("@/lib/job-generator");
-          const context = normalizeSearchInput(activeQuery, scopedLocation);
-          const fallbackJobs = generateFakeJobs({
-            query: context.query,
-            location: context.location,
-            count: FALLBACK_GENERATED_COUNT,
-          }).map((job) => ({ ...job, source: "generated", relevanceScore: 1 }) as JobListing);
-
-          const queryScoped = fallbackJobs.filter(
-            (job) =>
-              matchesTextFilter(job.title, activeQuery) &&
-              matchesLocationWithRadius(
-                job.location,
-                scopedLocation,
-                radiusKm,
-                coordinateCacheRef.current
-              )
-          );
-          const clientFacets = buildFacets(queryScoped);
-
-          const filtered = queryScoped.filter(
-            (job) =>
-              matchesTextFilter(job.type, typeFilter) &&
-              matchesTextFilter(job.workload, workloadFilter) &&
-              matchesRemoteFilter(job, remoteFilter) &&
-              matchesPostedWithin(job, postedWithinDays)
-          );
-
-          const sorted = sortJobs(filtered, sortBy);
-          const paged = sorted.slice(nextOffset, nextOffset + limit);
-
-          setJobs((prev) => (append ? [...prev, ...paged] : paged));
-          setTotalJobs(sorted.length);
-          setFacets(clientFacets);
-          setScrapedAt(null);
-          setFallbackUsed(true);
+        if (typeFilter !== "all") {
+          params.set("type", typeFilter);
         }
+        if (workloadFilter !== "all") {
+          params.set("workload", workloadFilter);
+        }
+        if (postedWithinDays !== "all") {
+          params.set("postedWithinDays", postedWithinDays);
+        }
+        if (scopedLocation && radiusKm !== "all") {
+          params.set("radiusKm", radiusKm);
+        }
+
+        const response = await fetch("/api/jobs?" + params.toString(), {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Die Jobs konnten nicht geladen werden.");
+        }
+
+        const data = (await response.json()) as JobsApiResponse;
+        if (requestId !== searchRequestRef.current) {
+          return;
+        }
+
+        setJobs((previousJobs) => {
+          if (!append) {
+            hasVisibleJobsRef.current = data.jobs.length > 0;
+            return data.jobs;
+          }
+
+          const existingIds = new Set(previousJobs.map((job) => job.id));
+          const nextJobs = [
+            ...previousJobs,
+            ...data.jobs.filter((job) => !existingIds.has(job.id)),
+          ];
+          hasVisibleJobsRef.current = nextJobs.length > 0;
+          return nextJobs;
+        });
+        if (!append) setOpportunities(data.opportunities ?? []);
+        setTotalJobs(data.total);
+        setFacets(data.facets ?? DEFAULT_FACETS);
+        setScrapedAt(data.scrapedAt ?? null);
 
         if (!append) {
-          setSearchKey((prev) => prev + 1);
+          setSearchKey((previous) => previous + 1);
         }
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Unbekannter Fehler");
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setErrorMessage(error instanceof Error ? error.message : "Unbekannter Fehler");
+        }
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        if (requestId === searchRequestRef.current) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+          setIsLoadingMore(false);
+          loadMoreInFlightRef.current = false;
+        }
       }
     },
     [
@@ -547,30 +425,18 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
     ]
   );
 
-  const urlParamsApplied = useRef(false);
+  const skipInitialSearch = useRef(Boolean(initialData));
 
   useEffect(() => {
-    if (!urlParamsApplied.current) {
-      urlParamsApplied.current = true;
-      const params = new URLSearchParams(window.location.search);
-      const urlQuery = params.get("q") ?? "";
-      const urlLocation = params.get("loc") ?? "";
-      const urlRadiusKm = params.get("radiusKm") ?? "";
-
-      if (urlQuery || urlLocation || urlRadiusKm) {
-        setQuery(urlQuery);
-        setLocation(urlLocation);
-        setActiveQuery(urlQuery);
-        setActiveLocation(normalizeLocationFilter(urlLocation));
-        if (urlRadiusKm === "all" || RADIUS_OPTIONS.some((option) => option.value === urlRadiusKm)) {
-          setRadiusKm(urlRadiusKm);
-        }
-        setHasSearched(true);
-        return;
-      }
+    if (skipInitialSearch.current) {
+      skipInitialSearch.current = false;
+      return;
     }
+
     void runSearch(false);
-  }, [runSearch]);
+  }, [runSearch, searchRevision]);
+
+  useEffect(() => () => searchAbortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!hasTrackedFilterChange.current) {
@@ -580,8 +446,8 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
 
     const scopedLocation = normalizeLocationFilter(activeLocation);
     trackEvent("filter_usage", {
-      type: typeFilter,
-      workload: workloadFilter,
+      has_type_filter: typeFilter !== "all",
+      has_workload_filter: workloadFilter !== "all",
       remote: remoteFilter,
       posted_within_days: postedWithinDays,
       radius_km: scopedLocation ? radiusKm : "all",
@@ -596,9 +462,24 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
     setHasSearched(true);
     setActiveQuery(normalizedQuery);
     setActiveLocation(normalizedLocation);
+    setSearchRevision((revision) => revision + 1);
     trackEvent("search_submit", {
-      query: normalizedQuery,
-      location: normalizedLocation,
+      has_query: Boolean(normalizedQuery),
+      query_length_bucket: !normalizedQuery
+        ? "none"
+        : normalizedQuery.length <= 20
+          ? "short"
+          : normalizedQuery.length <= 50
+            ? "medium"
+            : "long",
+      has_location: Boolean(normalizedLocation),
+      location_kind: !normalizedLocation
+        ? "none"
+        : getRegionRadius(normalizedLocation)
+          ? "region"
+          : /^\d{4}(?:\s|$)/.test(normalizedLocation)
+            ? "postal"
+            : "place",
       radius_km: normalizedLocation ? radiusKm : "all",
     });
     window.setTimeout(scrollToResults, 80);
@@ -614,16 +495,12 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
   const salaryMap = useMemo(() => {
     const map = new Map<string, string | null>();
     for (const job of jobs) {
-      const display = job.salary || (() => {
-        const est = estimateSalary(job.title);
-        return est ? `~${formatSalaryRange(est)}` : null;
-      })();
-      map.set(`${job.source}-${job.id}`, display || null);
+      map.set(job.id, job.salary || null);
     }
     return map;
   }, [jobs]);
 
-  const staleData = !fallbackUsed && isScrapedStale(scrapedAt);
+  const staleData = isScrapedStale(scrapedAt);
   const normalizedLocationDraft = normalizeLocationFilter(location);
   const normalizedActiveLocation = normalizeLocationFilter(activeLocation);
   const hasLocationDraft = Boolean(normalizedLocationDraft);
@@ -631,21 +508,35 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
   const hasActiveLocation = Boolean(normalizedActiveLocation);
 
   useEffect(() => {
-    if (!isMobile || !canLoadMore || isLoadingMore) return;
-    const sentinel = loadMoreSentinelRef.current;
-    if (!sentinel) return;
+    const media = window.matchMedia("(max-width: 767px)");
+    let observer: IntersectionObserver | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          handleLoadMore();
-        }
-      },
-      { rootMargin: "200px", threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isMobile, canLoadMore, isLoadingMore, handleLoadMore]);
+    const syncObserver = () => {
+      observer?.disconnect();
+      observer = null;
+
+      if (!media.matches || !canLoadMore || isLoadingMore) return;
+      const sentinel = loadMoreSentinelRef.current;
+      if (!sentinel) return;
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            handleLoadMore();
+          }
+        },
+        { rootMargin: "200px", threshold: 0 }
+      );
+      observer.observe(sentinel);
+    };
+
+    syncObserver();
+    media.addEventListener("change", syncObserver);
+    return () => {
+      observer?.disconnect();
+      media.removeEventListener("change", syncObserver);
+    };
+  }, [canLoadMore, isLoadingMore, handleLoadMore]);
 
   const resetFilters = () => {
     setTypeFilter("all");
@@ -673,14 +564,14 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
   }, []);
 
   const filterSelectClass =
-    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/30";
+    "trade-select h-11 w-full px-3 text-sm focus:outline-none";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b header-blur sticky top-0 z-30 animate-header">
-        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+    <div className="min-h-screen flex flex-col overflow-x-clip">
+      <header className="trade-header border-b sticky top-0 z-30">
+        <div className="container mx-auto px-4 sm:px-6 h-16 sm:h-[4.5rem] flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center shrink-0" onClick={resetToHome}>
-            <Image src="/logo.svg" alt="gärtnerjob.ch — Gärtnerjobs in der Schweiz" width={142} height={29} className="h-7 sm:h-8 w-auto" priority />
+            <SiteBrand />
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2 shrink-0">
             <HeaderDropdownMenu
@@ -691,71 +582,67 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
             <Button
               size="sm"
               asChild
-              className="text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-10 btn-interactive shadow-md shadow-primary/20"
+              variant="outline"
+              className="text-xs sm:text-sm px-2.5 sm:px-4 h-11 btn-interactive border-primary/35 bg-transparent"
             >
               <Link href="/arbeitgeber/preise">
-                <span className="sm:hidden">Inserieren</span>
-                <span className="hidden sm:inline">Stelle ausschreiben</span>
+                <span className="sm:hidden">Betriebe</span>
+                <span className="hidden sm:inline">Angebot für Betriebe</span>
               </Link>
             </Button>
           </nav>
         </div>
       </header>
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section
-          className={`relative z-20 bg-primary/5 border-b overflow-visible ${hasSearched
-            ? "pt-8 sm:pt-10 md:pt-12 pb-4 sm:pb-6 md:pb-8"
-            : "pt-10 sm:pt-14 md:pt-20 pb-5 sm:pb-7 md:pb-9"
+          className={`trade-hero relative z-20 overflow-visible ${hasSearched
+            ? "pt-8 sm:pt-10 md:pt-12 pb-5 sm:pb-7"
+            : "pt-10 sm:pt-14 md:pt-20 pb-6 sm:pb-9"
             }`}
         >
-          <div className="container mx-auto px-4 sm:px-6 text-center">
-            <h1 className="animate-hero-title text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6 tracking-tight leading-tight">
-              <span className="text-primary">Gärtner Jobs</span> Schweiz
-              <span className="block text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-700 mt-2 sm:mt-4">678 offene Stellen</span>
-            </h1>
-            <p className="animate-hero-subtitle text-base sm:text-lg text-slate-600 mb-8 sm:mb-10 max-w-2xl mx-auto px-1">
-              Live-Stellen mit smarter Filterung für Garten-Fachkräfte in der ganzen Schweiz. Finde den perfekten Job (Vollzeit / Teilzeit Pensum).
-            </p>
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6">
+            {heroContent}
 
             <form
-              className="animate-hero-search max-w-4xl mx-auto relative z-30"
+              className="relative z-30"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSearch();
               }}
             >
-              <div className="search-container bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-lg border flex flex-col md:flex-row gap-3">
+              <div className="search-bench min-w-0">
                 <SearchDropdown
                   value={query}
                   onChange={setQuery}
                   suggestions={JOB_SUGGESTIONS}
+                  label="Beruf oder Stichwort"
                   placeholder="Welchen Job suchst du?"
-                  icon={<Search className="h-5 w-5 text-slate-400" />}
+                  icon={<Search className="h-5 w-5 text-primary" />}
                 />
-                <div className="hidden md:block w-px bg-slate-200 my-2"></div>
                 <SearchDropdown
                   value={location}
-                  onChange={setLocation}
+                  onChange={handleLocationChange}
                   suggestions={locationDropdownSuggestions}
+                  label="Arbeitsort"
                   placeholder="Wo? (Ort, Kanton oder PLZ)"
-                  icon={<MapPin className="h-5 w-5 text-slate-400" />}
+                  icon={<MapPin className="h-5 w-5 text-primary" />}
                 />
-                <div className={`flex w-full flex-col md:w-auto md:flex-row md:items-center transition-[gap] duration-300 ${hasLocationDraft ? "gap-2 sm:gap-3" : "gap-0"}`}>
+                <div className={`flex w-full min-w-0 flex-col md:w-auto md:flex-row md:items-center ${hasLocationDraft ? "gap-2" : "gap-0"}`}>
                   <div
                     aria-hidden={!hasLocationDraft}
-                    className={`relative overflow-hidden transition-all duration-500 ease-out ${hasLocationDraft
-                      ? "max-h-12 opacity-100 translate-y-0 md:max-w-[220px] md:translate-x-0 md:border-l md:border-slate-200 md:pl-3"
-                      : "max-h-0 opacity-0 -translate-y-2 pointer-events-none md:max-w-0 md:translate-x-3 md:pl-0 md:border-l-0"
+                    className={`relative overflow-hidden transition-[max-height,opacity] duration-150 ${hasLocationDraft
+                      ? "max-h-12 opacity-100 md:max-w-[190px] md:border-l md:border-border md:pl-2"
+                      : "max-h-0 opacity-0 pointer-events-none md:max-w-0 md:pl-0 md:border-l-0"
                       }`}
                   >
                     <label htmlFor="radius-km" className="sr-only">
                       Maximaler Umkreis
                     </label>
-                    <LocateFixed className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <LocateFixed className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                     <select
                       id="radius-km"
-                      className="h-12 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30 md:min-w-[200px] md:w-auto md:border-none md:bg-transparent md:shadow-none md:focus:ring-0"
+                      className="trade-select h-12 w-full pl-9 pr-3 text-sm font-semibold md:min-w-[180px] md:w-auto md:border-0"
                       value={radiusKm}
                       onChange={(event) => { trigger("selection"); setRadiusKm(event.target.value); }}
                       disabled={!hasLocationDraft}
@@ -770,10 +657,10 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                   <Button
                     type="submit"
                     size="lg"
-                    disabled={isLoading}
-                    className="h-12 px-6 sm:px-8 text-base font-semibold rounded-xl btn-interactive shadow-md shadow-primary/25 w-full md:w-auto transition-all duration-300"
+                    disabled={isLoading || isRefreshing}
+                    className="h-12 px-6 sm:px-8 text-base font-bold btn-interactive w-full md:w-auto"
                   >
-                    {isLoading ? (
+                    {isLoading || isRefreshing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Lädt...
@@ -790,37 +677,39 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
 
         <section
           ref={resultsRef}
-          className={`relative z-10 bg-slate-50 pb-24 sm:pb-16 ${hasSearched ? "pt-4 sm:pt-6" : "pt-6 sm:pt-8"
+          className={`results-workbench relative z-10 pb-24 sm:pb-16 ${hasSearched ? "pt-6 sm:pt-8" : "pt-8 sm:pt-12"
             }`}
         >
-          <div className="container mx-auto px-4 sm:px-6 max-w-4xl">
-            <AnimateOnScroll className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+          <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-                  {hasSearched ? "Suchergebnisse" : "Aktuelle Gärtnerjobs (Vollzeit/Teilzeit Pensum)"}
+                <p className="eyebrow mb-2">Gartenjournal</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-foreground">
+                  {hasSearched ? "Passende Gartenbaustellen" : "Aktuelle Gartenbaustellen"}
                 </h2>
                 {hasActiveLocation && (
                   <p className="text-xs text-slate-500 mt-1">
                     Suchradius: {radiusKm === "all" ? "Beliebig" : `${radiusKm} km`}
                   </p>
                 )}
-                {scrapedAt && !fallbackUsed && (
+                {scrapedAt && (
                   <p className="text-xs text-slate-500 mt-1">
-                    Datenstand: {new Date(scrapedAt).toLocaleString("de-CH")}
+                    Datenstand: {formatSwissDateTime(scrapedAt)}
                   </p>
                 )}
               </div>
-              {!isLoading && (
-                <span className="text-sm text-slate-500">
+              {totalJobs > 0 && (
+                <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   <span key={searchKey} className="count-animate">
                     {visibleJobs} von {totalJobs}
                   </span>{" "}
                   Stellen
                 </span>
               )}
-            </AnimateOnScroll>
+            </div>
+            {opportunities.length > 0 && <div className="source-panel mb-4 px-4 py-3 text-sm text-foreground" role="status" aria-live="polite"><p className="font-semibold">{totalJobs} konkrete {totalJobs === 1 ? "Stelle" : "Stellen"} und {opportunities.length} Direktanstellungsprofile</p><p className="mt-1">Die Profile sind keine offenen Stellen. Arbeitgeber werden passend gesucht; die Anstellung erfolgt direkt beim jeweiligen Arbeitgeber.</p></div>}
 
-            <AnimateOnScroll className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+            <div className="filter-rack hidden md:grid grid-cols-2 lg:grid-cols-5 gap-2 mb-5">
               <div>
                 <label htmlFor="filter-type" className="sr-only">Vertragsart</label>
                 <select
@@ -838,51 +727,42 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="filter-workload" className="sr-only">Pensum</label>
-                <select
-                  id="filter-workload"
-                  className={filterSelectClass}
-                  value={workloadFilter}
-                  onChange={(event) => { trigger("selection"); setWorkloadFilter(event.target.value); }}
-                >
-                  <option value="all">Pensum</option>
-                  {facets.workloads.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.value} ({item.count})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                aria-label="Pensum"
+                className={filterSelectClass}
+                value={workloadFilter}
+                onChange={(event) => { trigger("selection"); setWorkloadFilter(event.target.value); }}
+              >
+                <option value="all">Pensum</option>
+                {facets.workloads.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.value} ({item.count})
+                  </option>
+                ))}
+              </select>
 
-              <div>
-                <label htmlFor="filter-remote" className="sr-only">Remote-Arbeit</label>
-                <select
-                  id="filter-remote"
-                  className={filterSelectClass}
-                  value={remoteFilter}
-                  onChange={(event) => { trigger("selection"); setRemoteFilter(event.target.value as RemoteFilter); }}
-                >
-                  <option value="any">Remote</option>
-                  <option value="true">Nur Remote</option>
-                  <option value="false">Nur vor Ort</option>
-                </select>
-              </div>
+              <select
+                aria-label="Arbeitsmodell"
+                className={filterSelectClass}
+                value={remoteFilter}
+                onChange={(event) => { trigger("selection"); setRemoteFilter(event.target.value as RemoteFilter); }}
+              >
+                <option value="any">Remote</option>
+                <option value="true">Nur Remote</option>
+                <option value="false">Nur vor Ort</option>
+              </select>
 
-              <div>
-                <label htmlFor="filter-posted" className="sr-only">Zeitraum</label>
-                <select
-                  id="filter-posted"
-                  className={filterSelectClass}
-                  value={postedWithinDays}
-                  onChange={(event) => { trigger("selection"); setPostedWithinDays(event.target.value); }}
-                >
-                  <option value="7">Letzte 7 Tage</option>
-                  <option value="14">Letzte 14 Tage</option>
-                  <option value="30">Letzte 30 Tage</option>
-                  <option value="all">Alle Zeiträume</option>
-                </select>
-              </div>
+              <select
+                aria-label="Publikationszeitraum"
+                className={filterSelectClass}
+                value={postedWithinDays}
+                onChange={(event) => { trigger("selection"); setPostedWithinDays(event.target.value); }}
+              >
+                <option value="7">Letzte 7 Tage</option>
+                <option value="14">Letzte 14 Tage</option>
+                <option value="30">Letzte 30 Tage</option>
+                <option value="all">Alle Zeiträume</option>
+              </select>
 
               <div>
                 <label htmlFor="filter-sort" className="sr-only">Sortierung</label>
@@ -897,33 +777,30 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                   <option value="oldest">Älteste zuerst</option>
                 </select>
               </div>
-            </AnimateOnScroll>
+            </div>
 
-            {fallbackUsed && (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <p className="font-semibold flex items-center gap-2">
-                  <WifiOff className="h-4 w-4" />
-                  Live-Daten nicht verfügbar
-                </p>
-                <p className="mt-1">Aktuell zeigen wir hochwertige Demo-Stellen, bis neue Scraping-Daten bereit sind.</p>
+            {!isLoading && staleData && (
+              <div className="source-panel mb-4 px-4 py-3 text-sm text-foreground">
+                <p className="font-semibold">Datenstand: {scrapedAt ? formatSwissDateTime(scrapedAt) : "unbekannt"}</p>
+                <p className="mt-1">Die Daten sind älter als der vorgesehene Aktualisierungszeitraum. Bis zum nächsten Abruf bleiben die zuletzt geladenen Inserate sichtbar.</p>
               </div>
             )}
 
-            {!isLoading && !fallbackUsed && staleData && (
-              <div className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                <p className="font-semibold">Datenstand: {scrapedAt ? new Date(scrapedAt).toLocaleString("de-CH") : "unbekannt"}</p>
-                <p className="mt-1">Die Live-Stellen wurden länger nicht aktualisiert. Wir empfehlen eine neue Suche in einigen Stunden.</p>
+            {isRefreshing && (
+              <div className="mb-3 flex items-center gap-2 text-sm text-slate-500" role="status" aria-live="polite">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Ergebnisse werden aktualisiert
               </div>
             )}
 
             {errorMessage && (
-              <Card className="mb-4 border-red-200">
+              <Card className="mb-4 border-red-200 py-0 gap-0">
                 <CardContent className="p-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-red-700">Jobs konnten nicht geladen werden</p>
                     <p className="text-sm text-slate-600 mt-1">{errorMessage}</p>
                   </div>
-                  <Button variant="outline" onClick={() => void runSearch(false)}>
+                  <Button variant="outline" onClick={() => setSearchRevision((revision) => revision + 1)}>
                     <RefreshCw className="h-4 w-4 mr-1" />
                     Erneut laden
                   </Button>
@@ -936,14 +813,15 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className={`skeleton-card h-32 sm:h-36 border border-slate-100 skeleton-stagger-${i}`}
+                    className="skeleton-card h-32 sm:h-36 border border-slate-100"
+                    style={{ animationDelay: `${i * 0.1}s` }}
                   />
                 ))}
               </div>
             )}
 
-            {!isLoading && !errorMessage && jobs.length === 0 && (
-              <Card>
+            {!isLoading && !errorMessage && jobs.length === 0 && opportunities.length === 0 && (
+              <Card className="py-0 gap-0">
                 <CardContent className="p-6 text-center">
                   <p className="font-semibold text-slate-900">Keine passenden Jobs gefunden</p>
                   <p className="text-sm text-slate-500 mt-1">Passe deine Suchbegriffe oder Filter an.</p>
@@ -955,53 +833,34 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
               </Card>
             )}
 
-            {!isLoading && !errorMessage && jobs.length > 0 && (
+            {jobs.length > 0 && (
               <>
-                <StaggeredList className="space-y-3 sm:space-y-4" baseDelayMs={0} staggerMs={30} triggerKey={searchKey}>
-                  {jobs.map((job, index) => {
-                    const href = isGeneratedJob(job)
-                      ? {
-                        pathname: `/jobs/${job.id}`,
-                        query: {
-                          q: job.searchContext?.query ?? activeQuery,
-                          loc: job.searchContext?.location ?? activeLocation,
-                        },
-                      }
-                      : `/jobs/${buildJobSlug(job)}`;
-
-                    return (
+                <div className="space-y-3 sm:space-y-4">
+                  {jobs.map((job, index) => (
                       <Link
-                        key={`${job.source}-${job.id}-${index}`}
-                        href={href}
+                        key={job.id}
+                        href={`/jobs/${job.id}`}
                         className="block group"
                         onClick={() => {
                           trigger("light");
                           trackEvent("job_open", {
                             job_id: job.id,
-                            source: job.source,
                             position: index + 1,
                           });
                         }}
                       >
-                        <Card className="job-card hover:border-primary/50 active:border-primary/40">
-                          <CardContent className="p-4 sm:p-6">
+                        <Card className="job-card py-0 gap-0">
+                          <CardContent className="p-5 pl-6 sm:p-6 sm:pl-7">
                             {/* Title row */}
-                            <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <h3 className="text-base sm:text-xl font-bold text-slate-900 group-hover:text-primary transition-colors duration-200 break-words">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2 mb-3">
+                              <h3 className="basis-full min-w-0 text-base sm:text-xl font-bold text-slate-900 group-hover:text-primary transition-colors duration-200 [overflow-wrap:anywhere]">
                                 {job.title}
                               </h3>
-                              <Badge
-                                variant="outline"
-                                className={isScrapedJob(job) ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-600"}
-                              >
-                                <Building2 className="h-3 w-3" />
-                                {isScrapedJob(job) ? "Live" : "Demo"}
-                              </Badge>
                               {job.isNew && (
-                                <Badge className="bg-accent text-slate-900 hover:bg-accent/90 badge-pulse-new">Neu</Badge>
+                                <Badge className="bg-accent text-slate-900 hover:bg-accent/90">Neu</Badge>
                               )}
                               {job.isUrgent && (
-                                <Badge variant="destructive" className="badge-pulse-urgent">Dringend</Badge>
+                                <Badge variant="destructive">Dringend</Badge>
                               )}
                               {job.isRemote === true && (
                                 <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
@@ -1011,34 +870,34 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                             </div>
 
                             {/* Structured info grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-100 rounded-lg border border-slate-200 overflow-hidden mb-3">
-                                  <div className="bg-white px-3 py-2.5 flex flex-col gap-0.5">
-                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                            <div className="job-facts">
+                                  <div className="job-fact">
+                                    <span className="job-fact__value">
                                       <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      {job.location}
+                                      <span className="truncate">{job.location}</span>
                                     </span>
-                                    <span className="text-[11px] text-slate-400 uppercase tracking-wide">Ort</span>
+                                    <span className="job-fact__label">Ort</span>
                                   </div>
-                                  <div className="bg-white px-3 py-2.5 flex flex-col gap-0.5">
-                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                                  <div className="job-fact">
+                                    <span className="job-fact__value tabular-nums">
                                       <Wallet className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      {salaryMap.get(`${job.source}-${job.id}`) ?? "–"}
+                                      <span className="truncate">{salaryMap.get(job.id) ?? "–"}</span>
                                     </span>
-                                    <span className="text-[11px] text-slate-400 uppercase tracking-wide">Lohn, CHF/Jahr</span>
+                                    <span className="job-fact__label">Lohnangabe</span>
                                   </div>
-                                  <div className="bg-white px-3 py-2.5 flex flex-col gap-0.5">
-                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                                  <div className="job-fact">
+                                    <span className="job-fact__value">
                                       <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      {job.workload}
+                                      <span className="truncate">{job.workload}</span>
                                     </span>
-                                    <span className="text-[11px] text-slate-400 uppercase tracking-wide">Pensum</span>
+                                    <span className="job-fact__label">Pensum</span>
                                   </div>
-                                  <div className="bg-white px-3 py-2.5 flex flex-col gap-0.5">
-                                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 truncate">
+                                  <div className="job-fact">
+                                    <span className="job-fact__value">
                                       <CalendarDays className="h-3.5 w-3.5 text-primary shrink-0" />
-                                      {job.type}
+                                      <span className="truncate">{job.type}</span>
                                     </span>
-                                    <span className="text-[11px] text-slate-400 uppercase tracking-wide">Anstellungsart</span>
+                                    <span className="job-fact__label">Anstellungsart</span>
                                   </div>
                                 </div>
 
@@ -1046,28 +905,23 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                               <p className="text-slate-600 text-sm line-clamp-2 flex-1 min-w-0">{job.description}</p>
                               <div className="flex items-center gap-3 shrink-0">
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-primary/10 text-primary hover:bg-primary/20 font-bold transition-colors duration-200"
-                                >
-                                  <Leaf className="h-3 w-3 mr-1 fill-current" />
-                                  Bewerben
-                                </Badge>
-                                <span className="text-xs text-slate-400 flex items-center gap-1 whitespace-nowrap">
+                                <span className="job-card__action inline-flex items-center gap-1">
+                                  Details ansehen <ArrowRight className="h-3.5 w-3.5" />
+                                </span>
+                                <span className="text-xs text-slate-600 flex items-center gap-1 whitespace-nowrap">
                                   <CalendarDays className="h-3 w-3" />
-                                  {new Date(job.datePosted).toLocaleDateString("de-CH")}
+                                  {formatSwissDate(job.datePosted)}
                                 </span>
                               </div>
                             </div>
                           </CardContent>
                         </Card>
                       </Link>
-                    );
-                  })}
-                </StaggeredList>
+                  ))}
+                </div>
 
-                {canLoadMore && isMobile && (
-                  <div className="mt-6 flex flex-col items-center gap-2">
+                {canLoadMore && (
+                  <div className="mt-6 flex flex-col items-center gap-2 md:hidden">
                     <div
                       ref={loadMoreSentinelRef}
                       className="h-4 w-full"
@@ -1083,12 +937,12 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                 )}
 
                 {canLoadMore && (
-                  <AnimateOnScroll className="mt-10 text-center hidden md:block" delay={120}>
+                  <div className="mt-10 text-center hidden md:block">
                     <Button
                       onClick={handleLoadMore}
                       variant="outline"
                       size="lg"
-                      className="rounded-xl btn-interactive"
+                      className="btn-interactive"
                       disabled={isLoadingMore}
                     >
                       {isLoadingMore ? (
@@ -1100,33 +954,161 @@ export function HomepageSearch({ initialData }: HomepageSearchProps) {
                         "Weitere Jobs laden"
                       )}
                     </Button>
-                  </AnimateOnScroll>
+                  </div>
                 )}
               </>
             )}
+            {!isLoading && !errorMessage && <DirectHireOpportunityFeed opportunities={opportunities} />}
 
+            <div className="mt-10 sm:mt-12">
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Beliebte Suchseiten</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {TOP_LANDING_PAGES.slice(0, 12).map((item) => (
+                  <Link
+                    key={`${item.role}-${item.canton}`}
+                    href={getLandingPath(item)}
+                    className="link-tile flex items-center px-3 py-2 pr-9 text-sm text-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                  >
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </main>
 
       {FEATURE_FLAGS.mobileFilters && (
-        <MobileFilterBar
-          typeFilter={typeFilter}
-          setTypeFilter={setTypeFilter}
-          workloadFilter={workloadFilter}
-          setWorkloadFilter={setWorkloadFilter}
-          remoteFilter={remoteFilter}
-          setRemoteFilter={setRemoteFilter}
-          postedWithinDays={postedWithinDays}
-          setPostedWithinDays={setPostedWithinDays}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          radiusKm={radiusKm}
-          setRadiusKm={setRadiusKm}
-          hasLocationInput={hasLocationInput}
-          facets={facets}
-          resetFilters={resetFilters}
-        />
+        <div className="mobile-command-bar md:hidden fixed bottom-0 left-0 right-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t z-20">
+          <div className="grid grid-cols-2 gap-2">
+            <Dialog open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-11">
+                  <SlidersHorizontal className="h-4 w-4 mr-1" />
+                  Filter
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="trade-dialog w-[calc(100%-1rem)] max-w-none max-h-[85dvh] overflow-y-auto p-4 top-auto bottom-2 translate-y-0">
+                <DialogHeader>
+                  <DialogTitle>Filter</DialogTitle>
+                  <DialogDescription>
+                    Grenze die aktuelle Trefferliste nach Umkreis, Vertragsart, Pensum,
+                    Arbeitsmodell und Publikationszeitraum ein.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {hasLocationInput && (
+                    <select
+                      aria-label="Umkreis"
+                      className={filterSelectClass}
+                      value={radiusKm}
+                      onChange={(event) => { trigger("selection"); setRadiusKm(event.target.value); }}
+                    >
+                      {RADIUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.value === "all" ? "Umkreis: Beliebig" : `Umkreis: ${option.label}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <select
+                    aria-label="Vertragsart"
+                    className={filterSelectClass}
+                    value={typeFilter}
+                    onChange={(event) => { trigger("selection"); setTypeFilter(event.target.value); }}
+                  >
+                    <option value="all">Vertragsart</option>
+                    {facets.types.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.value} ({item.count})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Pensum"
+                    className={filterSelectClass}
+                    value={workloadFilter}
+                    onChange={(event) => { trigger("selection"); setWorkloadFilter(event.target.value); }}
+                  >
+                    <option value="all">Pensum</option>
+                    {facets.workloads.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.value} ({item.count})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Arbeitsmodell"
+                    className={filterSelectClass}
+                    value={remoteFilter}
+                    onChange={(event) => { trigger("selection"); setRemoteFilter(event.target.value as RemoteFilter); }}
+                  >
+                    <option value="any">Remote</option>
+                    <option value="true">Nur Remote</option>
+                    <option value="false">Nur vor Ort</option>
+                  </select>
+                  <select
+                    aria-label="Publikationszeitraum"
+                    className={filterSelectClass}
+                    value={postedWithinDays}
+                    onChange={(event) => { trigger("selection"); setPostedWithinDays(event.target.value); }}
+                  >
+                    <option value="7">Letzte 7 Tage</option>
+                    <option value="14">Letzte 14 Tage</option>
+                    <option value="30">Letzte 30 Tage</option>
+                    <option value="all">Alle Zeiträume</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <Button variant="outline" onClick={resetFilters}>
+                    Zurücksetzen
+                  </Button>
+                  <Button onClick={() => setIsFilterSheetOpen(false)}>Fertig</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isSortSheetOpen} onOpenChange={setIsSortSheetOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-11">
+                  <ArrowUpWideNarrow className="h-4 w-4 mr-1" />
+                  Sortieren
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="trade-dialog w-[calc(100%-1rem)] max-w-none p-4 top-auto bottom-2 translate-y-0">
+                <DialogHeader>
+                  <DialogTitle>Sortieren nach</DialogTitle>
+                  <DialogDescription>
+                    Lege fest, in welcher Reihenfolge die aktuellen Treffer angezeigt werden.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 mt-1">
+                  {[
+                    { value: "newest", label: "Neueste zuerst" },
+                    { value: "relevance", label: "Relevanz" },
+                    { value: "oldest", label: "Älteste zuerst" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={`min-h-11 w-full text-left border px-3 py-2 text-sm transition-colors ${sortBy === item.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-slate-200 text-slate-700 hover:border-slate-300"
+                        }`}
+                      onClick={() => {
+                        trigger("selection");
+                        setSortBy(item.value as JobSort);
+                        setIsSortSheetOpen(false);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
       )}
 
     </div>

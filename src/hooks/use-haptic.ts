@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import type { WebHaptics } from "web-haptics";
 
 export type HapticStyle =
@@ -21,14 +21,6 @@ const PATTERNS: Record<HapticStyle, number | Array<{ duration: number; intensity
   ],
   nudge: [{ duration: 12, intensity: 0.5 }],
 };
-
-interface HapticContextValue {
-  trigger: (style?: HapticStyle) => void;
-}
-
-export const HapticContext = createContext<HapticContextValue>({
-  trigger: () => {},
-});
 
 export function useHapticEngine() {
   const instanceRef = useRef<WebHaptics | null>(null);
@@ -67,5 +59,5 @@ export function useHapticEngine() {
 }
 
 export function useHaptic() {
-  return useContext(HapticContext);
+  return useHapticEngine();
 }

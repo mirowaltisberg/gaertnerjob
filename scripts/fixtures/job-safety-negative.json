@@ -1,0 +1,128 @@
+{
+  "jobs": [
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-840295e6f404",
+      "jobUrl": "https://jobs.example.ch/reject-1",
+      "source": "indeed",
+      "title": "Elektroinstallateur EFZ",
+      "description": "Der Betrieb führt neben Elektroarbeiten auch Gartenbausprojekte aus.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-b9830013de12",
+      "jobUrl": "https://jobs.example.ch/reject-2",
+      "source": "google",
+      "title": "Projektleiter Gebäudetechnik",
+      "description": "Im Projekt geht es ausschliesslich um Grünanlagen.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-57265693ff45",
+      "jobUrl": "https://jobs.example.ch/review-1",
+      "source": "linkedin",
+      "title": "Gärtner / Maler",
+      "description": "Gemischte Funktion für Gartenbaus- und Malerarbeiten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REVIEW"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-958b224d4fb5",
+      "jobUrl": "https://jobs.example.ch/reject-3",
+      "source": "indeed",
+      "title": "Pflegefachperson Bodenstation",
+      "description": "Pflege und Betreuung in einer medizinischen Einrichtung.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "elektro",
+      "id": "scraped-gaertner-fb418c1d08fd",
+      "jobUrl": "https://jobs.example.ch/wrong-trade",
+      "source": "indeed",
+      "title": "Gärtner",
+      "description": "Verlegen von Grünanlagenn in Neu- und Umbauten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "ACCEPT",
+      "expectedIdentityError": "wrong-trade"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-000000000000",
+      "jobUrl": "https://jobs.example.ch/id-mismatch",
+      "source": "indeed",
+      "title": "Gärtner",
+      "description": "Verlegen und Prüfen von Grünanlagenn.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "ACCEPT",
+      "expectedIdentityError": "id-url-mismatch"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-4fbd9d1ea600",
+      "jobUrl": "https://jobs.example.ch/generic-monteur",
+      "source": "indeed",
+      "title": "Monteur 100%",
+      "description": "Montage von Grünanlagenn und Sockelleisten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-58c85b67a1f8",
+      "jobUrl": "https://jobs.example.ch/ambiguous-handwerker",
+      "source": "google",
+      "title": "Handwerker 100%",
+      "description": "Verlegen von Parkett und Grünanlagenn.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-F146A51E95B4",
+      "jobUrl": "https://jobs.example.ch/uppercase-id",
+      "source": "linkedin",
+      "title": "Gärtner",
+      "description": "Verlegen von Grünanlagenn in Neu- und Umbauten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "ACCEPT",
+      "expectedIdentityError": "invalid-id"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-3fd524fd2f33",
+      "jobUrl": "https://jobs.example.ch/legacy-id",
+      "source": "indeed",
+      "title": "Gärtner",
+      "description": "Verlegen von Grünanlagenn in Neu- und Umbauten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "ACCEPT",
+      "expectedIdentityError": "invalid-id"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-ecb644de573f",
+      "jobUrl": "https://jobs.example.ch/trade-sales",
+      "source": "indeed",
+      "title": "Verkaufsberater Grünanlagen",
+      "description": "Beratung und Verkauf im Ausstellungsraum.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-df770f64aed4",
+      "jobUrl": "https://jobs.example.ch/body-only-planer",
+      "source": "google",
+      "title": "Projektleiter",
+      "description": "Planung von Gartenbausarbeiten.",
+      "datePosted": "$TODAY",
+      "expectedDisposition": "REJECT"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "trade": "gaertner",
+  "idPattern": "^scraped-gaertner-[0-9a-f]{12}$",
+  "allowedSources": ["google", "indeed", "linkedin"],
+  "tradeContextPatterns": [
+    "gärtner", "gaertner", "gartenbau", "landschaftsbau", "landschaftsgärtner",
+    "landschaftsgaertner", "grünpflege", "gruenpflege", "baumpflege", "arborist",
+    "gärtnerei", "gaertnerei", "pflanzenproduktion", "staudengärtn", "friedhofgärtn"
+  ],
+  "hardNegativeTitlePatterns": [
+    "pflegefach", "krankenpflege", "spitex", "gesundheit", "sozial", "verkauf",
+    "sales", "marketing", "jurist", "anwalt", "fahrer", "chauffeur", "logistik",
+    "reinigung", "koch", "küche", "kueche", "arzt", "medizin", "software",
+    "developer", "data scientist", "human resources", "product manager",
+    "product owner", "frontend", "backend", "devops", "buchhalt", "accounting",
+    "controller", "internship", "praktikum", "verkaufsberater", "ingénieur",
+    "technicien", "électricien", "elettricista", "disegnatore"
+  ],
+  "otherTradeTitlePatterns": [
+    "elektro", "elektriker", "heizung", "heizungsinstallateur", "heizungsmonteur",
+    "wärmepump", "waermepump", "lüftung", "lueftung", "kälte", "kaelte",
+    "klima", "spengler", "dachdecker", "zimmermann", "holzbau", "schreiner",
+    "sanitär", "sanitaer", "bodenleger", "plattenleger", "maler", "gipser",
+    "maurer", "hlks", "hvac"
+  ],
+  "highSpecificityTitles": [
+    { "pattern": "landschaftsgärtner|landschaftsgaertner|gärtner.*garten.*landschaft|gaertner.*garten.*landschaft", "publicTitle": "Landschaftsgärtner/in", "profile": "landscape" },
+    { "pattern": "baumpfleger|baumkletter|arborist", "publicTitle": "Baumpfleger/in", "profile": "arboriculture" },
+    { "pattern": "friedhofsgärtner|friedhofsgaertner", "publicTitle": "Friedhofsgärtner/in", "profile": "maintenance" },
+    { "pattern": "kundengärtner|kundengaertner|unterhaltsgärtner|unterhaltsgaertner", "publicTitle": "Kundengärtner/in", "profile": "maintenance" },
+    { "pattern": "staudengärtner|staudengaertner|zierpflanzengärtner|zierpflanzengaertner|pflanzengärtner|pflanzengaertner|gärtner.*produktion|gaertner.*produktion", "publicTitle": "Gärtner/in Pflanzenproduktion", "profile": "production" },
+    { "pattern": "gartenbau(?:arbeiter|fach|mitarbeit)|gärtner|gaertner", "publicTitle": "Gärtner/in", "profile": "landscape" }
+  ],
+  "broadTitlesRequiringTradeContext": [
+    { "pattern": "projektleit|bauleit|baustellenleit|bauführ|baufuehr", "publicTitle": "Bauleiter/in Gartenbau", "profile": "leadership" },
+    { "pattern": "vorarbeit|gruppenleit|teamleit", "publicTitle": "Vorarbeiter/in Gartenbau", "profile": "leadership" },
+    { "pattern": "arbeitsvorbereit|kalkulat|technisch.*sachbearbeit", "publicTitle": "Fachperson Planung Gartenbau", "profile": "planning" },
+    { "pattern": "mitarbeit|fachperson|arbeiter|unterhalt|grünpflege|gruenpflege", "publicTitle": "Mitarbeiter/in Gartenbau", "profile": "maintenance" }
+  ],
+  "profiles": {
+    "leadership": {
+      "responsibilities": [
+        "Gartenbauprojekte von der Arbeitsvorbereitung bis zur Abnahme koordinieren",
+        "Teams, Termine, Materialeinsatz und Arbeitssicherheit auf der Baustelle steuern",
+        "Ausführung mit Bauleitung, Kundschaft und Fachpartnern abstimmen"
+      ],
+      "requirements": [
+        "Ausbildung und fundierte Praxis im Garten- und Landschaftsbau",
+        "Erfahrung in der Führung oder Koordination von Baustellen",
+        "Selbstständige, lösungsorientierte und verlässliche Arbeitsweise"
+      ]
+    },
+    "planning": {
+      "responsibilities": [
+        "Ausmasse, Materialmengen und Arbeitsabläufe für Gartenbauprojekte vorbereiten",
+        "Pläne, Offerten und Projektdokumentation sorgfältig bearbeiten",
+        "Lieferungen und technische Schnittstellen mit den Beteiligten koordinieren"
+      ],
+      "requirements": [
+        "Ausbildung oder fundierte Praxis im Gartenbau",
+        "Gutes Verständnis für Pläne, Pflanzen, Materialien und Ausmass",
+        "Strukturierte, sorgfältige und kommunikative Arbeitsweise"
+      ]
+    },
+    "landscape": {
+      "responsibilities": [
+        "Gartenanlagen, Wege, Plätze und Grünflächen nach Plan erstellen",
+        "Pflanz-, Erd-, Belags- und Pflegearbeiten fachgerecht ausführen",
+        "Maschinen und Geräte sicher einsetzen und Baustellen sauber abschliessen"
+      ],
+      "requirements": [
+        "Ausbildung oder fundierte Erfahrung im Garten- und Landschaftsbau",
+        "Praxis mit Pflanzen, Materialien, Werkzeugen und Baumaschinen",
+        "Körperliche Belastbarkeit sowie zuverlässige Teamarbeit"
+      ]
+    },
+    "maintenance": {
+      "responsibilities": [
+        "Private und öffentliche Grünanlagen saisonal pflegen",
+        "Gehölze schneiden, Pflanzflächen bearbeiten und Pflanzenzustand beurteilen",
+        "Pflegeeinsätze selbstständig organisieren und dokumentieren"
+      ],
+      "requirements": [
+        "Pflanzenkenntnisse und praktische Erfahrung in der Grünpflege",
+        "Sicherer Umgang mit Maschinen und Geräten",
+        "Selbstständige, sorgfältige und kundenorientierte Arbeitsweise"
+      ]
+    },
+    "production": {
+      "responsibilities": [
+        "Pflanzen kultivieren, pflegen und für Verkauf oder Weiterverwendung vorbereiten",
+        "Bewässerung, Pflanzenschutz und Kulturbedingungen kontrollieren",
+        "Bestände, Kulturarbeiten und Qualitätskontrollen nachvollziehbar führen"
+      ],
+      "requirements": [
+        "Ausbildung oder Praxis in Pflanzenproduktion oder Gärtnerei",
+        "Gute Pflanzenkenntnisse und sorgfältiger Umgang mit Kulturen",
+        "Zuverlässige und saisonal flexible Arbeitsweise"
+      ]
+    },
+    "arboriculture": {
+      "responsibilities": [
+        "Bäume beurteilen und Pflege- oder Sicherungsmassnahmen fachgerecht ausführen",
+        "Schnittarbeiten vom Boden oder mit geeigneter Zugangstechnik durchführen",
+        "Arbeitsbereiche sichern und Massnahmen dokumentieren"
+      ],
+      "requirements": [
+        "Praxis in Baumpflege und sichere Pflanzenkenntnisse",
+        "Ausbildung in Klettertechnik oder Hubarbeitsbühnen je nach Einsatz",
+        "Ausgeprägtes Sicherheitsbewusstsein und körperliche Belastbarkeit"
+      ]
+    }
+  }
+}

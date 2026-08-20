@@ -1,8 +1,5 @@
 import { ImageResponse } from "next/og";
 
-// SEO-DECISION: Apple Touch Icon generated from code to match the brand leaf.
-// This satisfies the Seobility "missing apple-touch-icon" warning.
-
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
@@ -16,21 +13,16 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#22c55e",
-          borderRadius: "36px",
+          background: "#f3f4d7",
+          borderRadius: "30px",
         }}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 48 48"
-          width="120"
-          height="120"
-        >
-          <path
-            d="M24 6c-7 0-12 6-12 14 0 2 .5 4 1.5 5.5C15 24 17 22 20 20c-1 4-1 8 0 12 0 0 4-3 6-8 2 5 6 8 6 8 1-4 1-8 0-12 3 2 5 4 6.5 2.5C39.5 24 40 22 40 20c0-8-5-14-12-14h-4z"
-            fill="white"
-          />
-        </svg>
+        <div style={{ width: 120, height: 136, display: "flex", position: "relative" }}>
+          <span style={{ position: "absolute", width: 10, height: 84, left: 56, bottom: 19, background: "#315f22", borderRadius: 8 }} />
+          <span style={{ position: "absolute", width: 60, height: 38, left: 2, top: 18, background: "#d9a000", borderRadius: "90% 8% 90% 8%", transform: "rotate(24deg)" }} />
+          <span style={{ position: "absolute", width: 60, height: 38, right: 0, top: 4, background: "#769866", borderRadius: "8% 90% 8% 90%", transform: "rotate(-24deg)" }} />
+          <span style={{ position: "absolute", width: 120, height: 10, left: 0, bottom: 8, background: "#6a4026", borderRadius: 8 }} />
+        </div>
       </div>
     ),
     { ...size }

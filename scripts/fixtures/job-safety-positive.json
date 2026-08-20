@@ -1,0 +1,79 @@
+{
+  "jobs": [
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-6d0866a52b28",
+      "jobUrl": "https://jobs.example.ch/garten-1",
+      "source": "indeed",
+      "title": "Landschaftsgärtner EFZ",
+      "company": "Beispiel Gartenbau AG",
+      "location": "Zürich, Zürich",
+      "type": "Vollzeit",
+      "workload": "100%",
+      "datePosted": "$TODAY",
+      "description": "Erstellen von Gartenanlagen und Ausführen von Pflanz- und Belagsarbeiten in der Region Zürich.",
+      "expectedDisposition": "ACCEPT",
+      "expectedPublicTitle": "Landschaftsgärtner/in EFZ"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-6f33df5d2e3c",
+      "jobUrl": "https://jobs.example.ch/garten-2",
+      "source": "linkedin",
+      "title": "Bauleiter Gartenbau 80–100%",
+      "company": "Muster Gartenbau GmbH",
+      "location": "Bern, Bern",
+      "type": "Festanstellung",
+      "workload": "80-100%",
+      "datePosted": "$TODAY",
+      "description": "Koordination von Gartenbauprojekten, Terminen und Fachpartnern vom Start bis zur Übergabe.",
+      "expectedDisposition": "ACCEPT",
+      "expectedPublicTitle": "Bauleiter/in Gartenbau"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-583967db8dd8",
+      "jobUrl": "https://jobs.example.ch/garten-3",
+      "source": "google",
+      "title": "Baumpfleger",
+      "company": "Baumpflege Beispiel AG",
+      "location": "Basel, Basel-Stadt",
+      "type": "Vollzeit",
+      "workload": "100%",
+      "datePosted": "$TODAY",
+      "description": "Beurteilen und Pflegen von Bäumen mit geeigneter Zugangstechnik.",
+      "expectedDisposition": "ACCEPT",
+      "expectedPublicTitle": "Baumpfleger/in"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-19f25266f71e",
+      "jobUrl": "https://jobs.example.ch/garten-4",
+      "source": "indeed",
+      "title": "Gärtner Pflanzenproduktion EFZ",
+      "company": "Pflanzen Muster AG",
+      "location": "Luzern, Luzern",
+      "type": "Vollzeit",
+      "workload": "80-100%",
+      "datePosted": "$TODAY",
+      "description": "Kultivieren und Pflegen von Stauden und Zierpflanzen.",
+      "expectedDisposition": "ACCEPT",
+      "expectedPublicTitle": "Gärtner/in Pflanzenproduktion EFZ"
+    },
+    {
+      "trade": "gaertner",
+      "id": "scraped-gaertner-cf90c18c45e1",
+      "jobUrl": "https://jobs.example.ch/garten-efz-token",
+      "source": "indeed",
+      "title": "Gärtner EFZPlus",
+      "company": "Token Test AG",
+      "location": "Zug, Zug",
+      "type": "Vollzeit",
+      "workload": "100%",
+      "datePosted": "$TODAY",
+      "description": "Pflanzflächen vorbereiten und Grünanlagen im Einsatzgebiet Zug pflegen.",
+      "expectedDisposition": "ACCEPT",
+      "expectedPublicTitle": "Gärtner/in"
+    }
+  ]
+}
