@@ -14,7 +14,8 @@
     "check:scrape-partition": "python3 scripts/check_scrape_partition.py --total-chunks 5",
     "check:workflow-boundary": "node scripts/check-workflow-boundary.mjs GAERTNER_PUBLISHING_APPROVED gaertner 75",
     "check:direct-hire": "NODE_PATH=./node_modules/next/dist/compiled node --conditions=react-server --import tsx --test src/lib/direct-hire-opportunities.test.ts",
-    "check:job-safety": "npm run check:public-jobs && npm run check:raw-job-boundary && npm run check:direct-hire && npm run check:job-safety:python && npm run check:publisher-boundary && npm run check:scrape-partition && npm run check:workflow-boundary",
+    "check:job-schema": "node --import tsx --test src/lib/job-schema.test.ts",
+    "check:job-safety": "npm run check:public-jobs && npm run check:raw-job-boundary && npm run check:direct-hire && npm run check:job-schema && npm run check:job-safety:python && npm run check:publisher-boundary && npm run check:scrape-partition && npm run check:workflow-boundary",
     "check:live-public-jobs": "tsx scripts/check-live-public-jobs.ts",
     "scrape": "scripts/.venv/bin/python scripts/scrape-jobs.py",
     "scrape:quick": "scripts/.venv/bin/python scripts/scrape-jobs.py --quick"
