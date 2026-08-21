@@ -134,6 +134,23 @@ export const TOP_LANDING_PAGES = Object.keys(ROLE_CONTENT).flatMap((role) =>
   ),
 );
 
+const priorityRoles = [...new Set(TOP_LANDING_PAGES.map((page) => page.role))].slice(0, 3);
+const priorityPairs: Array<[string | undefined, string]> = [
+  [priorityRoles[0], "ZH"],
+  [priorityRoles[0], "BE"],
+  [priorityRoles[1], "ZH"],
+  [priorityRoles[1], "AG"],
+  [priorityRoles[2], "ZH"],
+  [priorityRoles[2], "SG"],
+];
+
+export const SEO_PRIORITY_LANDING_PAGES = priorityPairs.flatMap(([role, canton]) => {
+  const match = TOP_LANDING_PAGES.find(
+    (page) => page.role === role && page.canton === canton,
+  );
+  return match ? [match] : [];
+});
+
 function normalizeSlug(value: string): string {
   return value.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue")
     .replace(/\u00df/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -144,6 +161,13 @@ export const toCantonSlug = normalizeSlug;
 
 export function getLandingPath(config: LandingPageConfig): string {
   return `/gaertnerjobs/${toRoleSlug(config.role)}/${toCantonSlug(config.canton)}`;
+}
+
+export function isSeoPriorityLandingPage(config: LandingPageConfig): boolean {
+  const path = getLandingPath(config);
+  return SEO_PRIORITY_LANDING_PAGES.some(
+    (candidate) => getLandingPath(candidate) === path,
+  );
 }
 
 export function findLandingPageBySlug(roleSlug: string, cantonSlug: string): LandingPageConfig | null {

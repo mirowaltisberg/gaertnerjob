@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
+import { SalaryOrientationCalculator } from "@/components/salary-orientation-calculator";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -241,6 +242,7 @@ export default function LohnPage() {
             </Button>
           </div>
         </section>
+        <SalaryOrientationCalculator profession="Gärtner" />
       </main>
 
       <SiteFooter />
