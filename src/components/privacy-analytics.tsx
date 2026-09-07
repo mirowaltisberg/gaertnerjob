@@ -1,5 +1,7 @@
 "use client";
 
+import { isSyntheticVisit } from "@/lib/application-client";
+
 import { AdsConsent } from "@/components/ads-consent";
 
 import { usePathname } from "next/navigation";
@@ -104,13 +106,14 @@ export function PrivacyAnalytics() {
       options: { keepalive?: boolean; path?: string } = {},
     ) => {
       if (readConsentChoice() !== "accepted") return;
+      try {
       const payload = {
         sessionId: getSessionId(),
         sequence: nextSequence(),
         eventName,
         path: options.path ?? (window.location.pathname.slice(0, 300) || "/"),
         referrerHost: getReferrerHost(),
-        properties,
+        properties: { ...properties, synthetic: isSyntheticVisit() },
         occurredAt: new Date().toISOString(),
         consentVersion: CONSENT_VERSION,
       };
@@ -124,6 +127,7 @@ export function PrivacyAnalytics() {
         },
         body: JSON.stringify(payload),
       }).catch(() => undefined);
+      } catch { /* Browser storage restrictions never interrupt the application. */ }
     },
     [],
   );
@@ -229,6 +233,7 @@ export function PrivacyAnalytics() {
       }
     }, 30_000);
 
+    try {
     if (window.sessionStorage.getItem(STARTED_KEY) !== "yes") {
       window.sessionStorage.setItem(STARTED_KEY, "yes");
       sendEvent("session_start", {
@@ -239,6 +244,8 @@ export function PrivacyAnalytics() {
         dnt: navigator.doNotTrack === "1",
       });
     }
+
+    } catch { /* Optional measurement fails closed. */ }
 
     return () => {
       window.removeEventListener("jobsite:analytics", onCustomEvent);
@@ -275,6 +282,7 @@ export function PrivacyAnalytics() {
   }, [consent, pathname, sendEvent]);
 
   const choose = (choice: Exclude<ConsentChoice, null>) => {
+    try {
     window.localStorage.setItem(CONSENT_KEY, choice);
     if (choice === "declined") {
       window.sessionStorage.removeItem(SESSION_KEY);
@@ -282,6 +290,7 @@ export function PrivacyAnalytics() {
       window.sessionStorage.removeItem(STARTED_KEY);
     }
     window.dispatchEvent(new Event(CONSENT_EVENT));
+    } catch { return; }
   };
 
   return <AdsConsent analyticsChoice={consent} onAnalyticsChoice={choose} />;
