@@ -280,7 +280,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { success: true },
+      { success: true, conversionId: randomUUID() },
       {
         status: 202,
         headers: {

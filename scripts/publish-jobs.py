@@ -362,6 +362,7 @@ def publish(
     max_age_days: int,
     minimum_jobs: int,
     minimum_retention_ratio: float,
+    preserve_existing: bool = False,
 ) -> tuple[int, int]:
     today = datetime.now(timezone.utc).date()
     cutoff = today - timedelta(days=max_age_days)
@@ -388,7 +389,17 @@ def publish(
 
     # Upsert first so a prune failure can only leave extra old rows; it cannot
     # make the live site empty. Every delete is constrained by trade and ID.
-    delete_stale_jobs(client, stale_ids)
+    if not preserve_existing:
+        delete_stale_jobs(client, stale_ids)
+
+    expected_count = len(rows)
+    if preserve_existing:
+        # Some older trade publishers load only current-prefix IDs. Include
+        # preserved legacy rows in metadata and verification as well.
+        actual = client.table("jobs").select("id", count="exact", head=True).eq("trade", TRADE).execute()
+        if not isinstance(actual.count, int) or actual.count < len(rows):
+            raise PipelineError("additive refresh count verification failed")
+        expected_count = actual.count
 
     scraped_at = datetime.now(timezone.utc).isoformat()
     metadata_response = (
@@ -397,7 +408,7 @@ def publish(
             {
                 "trade": TRADE,
                 "scraped_at": scraped_at,
-                "total_jobs": len(rows),
+                "total_jobs": expected_count,
             },
             on_conflict="trade",
             returning="minimal",
@@ -405,8 +416,8 @@ def publish(
         .execute()
     )
 
-    verify_publish(client, len(rows))
-    return len(rows), len(stale_ids)
+    verify_publish(client, expected_count)
+    return len(rows), 0 if preserve_existing else len(stale_ids)
 
 
 def parse_args() -> argparse.Namespace:
@@ -421,6 +432,10 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_MIN_RETENTION_RATIO,
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--preserve-existing", action="store_true",
+        help="Upsert the reviewed snapshot without deleting existing jobs or linked applications",
+    )
     parser.add_argument(
         "--plan",
         action="store_true",
@@ -483,6 +498,7 @@ def main() -> int:
             args.max_age_days,
             args.min_jobs,
             args.min_retention_ratio,
+            preserve_existing=args.preserve_existing,
         )
         print(f"Published {published} jobs and pruned {pruned} stale Gärtner rows.")
         return 0

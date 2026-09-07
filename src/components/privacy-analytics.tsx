@@ -1,7 +1,9 @@
 "use client";
 
+import { AdsConsent } from "@/components/ads-consent";
+
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 const CONSENT_KEY = "jobsite-analytics-consent";
 const SESSION_KEY = "jobsite-analytics-session";
@@ -14,8 +16,12 @@ type ConsentChoice = "accepted" | "declined" | null;
 type EventProperties = Record<string, string | number | boolean>;
 
 function readConsentChoice(): ConsentChoice {
-  const stored = window.localStorage.getItem(CONSENT_KEY);
-  return stored === "accepted" || stored === "declined" ? stored : null;
+  try {
+    const stored = window.localStorage.getItem(CONSENT_KEY);
+    return stored === "accepted" || stored === "declined" ? stored : null;
+  } catch {
+    return null;
+  }
 }
 
 function subscribeToConsent(onChange: () => void): () => void {
@@ -86,7 +92,6 @@ export function PrivacyAnalytics() {
     readConsentChoice,
     () => null,
   );
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const pageStartedAt = useRef<number | null>(null);
   const currentPath = useRef<string | null>(null);
   const maxScroll = useRef(0);
@@ -98,7 +103,7 @@ export function PrivacyAnalytics() {
       properties: EventProperties = {},
       options: { keepalive?: boolean; path?: string } = {},
     ) => {
-      if (window.localStorage.getItem(CONSENT_KEY) !== "accepted") return;
+      if (readConsentChoice() !== "accepted") return;
       const payload = {
         sessionId: getSessionId(),
         sequence: nextSequence(),
@@ -277,53 +282,7 @@ export function PrivacyAnalytics() {
       window.sessionStorage.removeItem(STARTED_KEY);
     }
     window.dispatchEvent(new Event(CONSENT_EVENT));
-    setSettingsOpen(false);
   };
 
-  const showDialog = consent === null || settingsOpen;
-
-  return showDialog ? (
-    <aside
-      className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-3xl border border-border bg-background p-4 shadow-2xl sm:inset-x-6 sm:p-5"
-      role="dialog"
-      aria-modal="false"
-      aria-labelledby="analytics-consent-title"
-    >
-      <h2 id="analytics-consent-title" className="text-base font-bold text-foreground">
-        Anonyme Nutzungsanalyse
-      </h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Mit deiner Zustimmung erfassen wir Seitenaufrufe, Klicks, Filter,
-        Scrolltiefe, Verweildauer und Bewerbungsschritte. Namen, Kontaktdaten,
-        Lebensläufe, Eingaben und Suchbegriffe werden nicht analysiert.
-      </p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          className="inline-flex min-h-11 items-center justify-center bg-primary px-5 font-semibold text-primary-foreground"
-          onClick={() => choose("accepted")}
-        >
-          Analyse erlauben
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-11 items-center justify-center border border-border px-5 font-semibold text-foreground"
-          onClick={() => choose("declined")}
-        >
-          Nur notwendige Funktionen
-        </button>
-        <a className="px-2 py-2 text-sm underline" href="/datenschutz">
-          Details zum Datenschutz
-        </a>
-      </div>
-    </aside>
-  ) : (
-    <button
-      type="button"
-      className="fixed bottom-2 left-2 z-40 border border-border bg-background/95 px-3 py-2 text-xs font-medium text-foreground shadow-sm"
-      onClick={() => setSettingsOpen(true)}
-    >
-      Tracking-Einstellungen
-    </button>
-  );
+  return <AdsConsent analyticsChoice={consent} onAnalyticsChoice={choose} />;
 }
