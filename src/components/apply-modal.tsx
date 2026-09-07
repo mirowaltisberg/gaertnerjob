@@ -1,5 +1,7 @@
 "use client";
 
+import { trackSavedApplication } from "@/lib/google-ads";
+
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, FileText, Loader2, UploadCloud, X } from "lucide-react";
@@ -45,6 +47,7 @@ export function ApplyModal({ jobId, jobTitle, onOpen }: ApplyModalProps) {
   const [isDragging, setIsDragging] = useState(false);
   const formStartedAtRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const submissionInFlight = useRef(false);
 
   const resetForm = () => {
     setName("");
@@ -146,81 +149,91 @@ export function ApplyModal({ jobId, jobTitle, onOpen }: ApplyModalProps) {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null);
-
-    if (!isValidEmail(email.trim()) || !isValidPhone(phone.trim())) {
-      trackEvent("application_error", {
-        job_id: jobId,
-        error_kind: "contact_validation",
-      });
-      setError("Bitte prüfe deine E-Mail-Adresse und Telefonnummer.");
-      trigger("error");
-      return;
-    }
-    if (!cvFile || !consent) {
-      trackEvent("application_error", {
-        job_id: jobId,
-        error_kind: "missing_file_or_consent",
-      });
-      setError("Bitte füge einen PDF-Lebenslauf hinzu und bestätige die Einwilligung.");
-      trigger("error");
-      return;
-    }
-
-    const fileError = await validateFile(cvFile);
-    if (fileError) {
-      trackEvent("application_error", {
-        job_id: jobId,
-        error_kind: "file_validation",
-      });
-      setError(fileError);
-      trigger("error");
-      return;
-    }
-
-    setIsSubmitting(true);
-    trackEvent("application_submit", { job_id: jobId });
+    if (submissionInFlight.current) return;
+    submissionInFlight.current = true;
     try {
-      const formData = new FormData();
-      formData.append("jobId", jobId);
-      formData.append("name", name.trim());
-      formData.append("email", email.trim());
-      formData.append("phone", phone.trim());
-      formData.append("website", website);
-      formData.append("formStartedAt", String(formStartedAtRef.current));
-      formData.append("consent", "yes");
-      formData.append("cv", cvFile);
+      setError(null);
 
-      const response = await fetch("/api/applications", {
-        method: "POST",
-        body: formData,
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(
-          (data as { error?: string }).error || "Online-Bewerbungen sind derzeit nicht verfügbar."
-        );
+      if (!isValidEmail(email.trim()) || !isValidPhone(phone.trim())) {
+        trackEvent("application_error", {
+          job_id: jobId,
+          error_kind: "contact_validation",
+        });
+        setError("Bitte prüfe deine E-Mail-Adresse und Telefonnummer.");
+        trigger("error");
+        return;
+      }
+      if (!cvFile || !consent) {
+        trackEvent("application_error", {
+          job_id: jobId,
+          error_kind: "missing_file_or_consent",
+        });
+        setError("Bitte füge einen PDF-Lebenslauf hinzu und bestätige die Einwilligung.");
+        trigger("error");
+        return;
       }
 
-      setIsSubmitting(false);
-      setIsSuccess(true);
-      trackEvent("application_success", { job_id: jobId });
-      trigger("success");
-    } catch (submissionError) {
-      trackEvent("application_error", {
-        job_id: jobId,
-        error_kind: "submission",
-      });
-      setIsSubmitting(false);
-      trigger("error");
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Online-Bewerbungen sind derzeit nicht verfügbar."
-      );
+      const fileError = await validateFile(cvFile);
+      if (fileError) {
+        trackEvent("application_error", {
+          job_id: jobId,
+          error_kind: "file_validation",
+        });
+        setError(fileError);
+        trigger("error");
+        return;
+      }
+
+      setIsSubmitting(true);
+      trackEvent("application_submit", { job_id: jobId });
+      try {
+        const formData = new FormData();
+        formData.append("jobId", jobId);
+        formData.append("name", name.trim());
+        formData.append("email", email.trim());
+        formData.append("phone", phone.trim());
+        formData.append("website", website);
+        formData.append("formStartedAt", String(formStartedAtRef.current));
+        formData.append("consent", "yes");
+        formData.append("cv", cvFile);
+
+        const response = await fetch("/api/applications", {
+          method: "POST",
+          body: formData,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(
+            (data as { error?: string }).error || "Online-Bewerbungen sind derzeit nicht verfügbar."
+          );
+        }
+
+        const saved = await response.json();
+        if (saved.success !== true) throw new Error("Die Speicherung wurde nicht bestätigt.");
+        trackSavedApplication(saved.conversionId);
+
+        setIsSubmitting(false);
+        setIsSuccess(true);
+        trackEvent("application_success", { job_id: jobId });
+        trigger("success");
+      } catch (submissionError) {
+        trackEvent("application_error", {
+          job_id: jobId,
+          error_kind: "submission",
+        });
+        setIsSubmitting(false);
+        trigger("error");
+        setError(
+          submissionError instanceof Error
+            ? submissionError.message
+            : "Online-Bewerbungen sind derzeit nicht verfügbar."
+        );
+      }
+    } finally {
+      submissionInFlight.current = false;
     }
   };
 
