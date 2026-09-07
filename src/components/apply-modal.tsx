@@ -1,6 +1,6 @@
 "use client";
 
-import { trackSavedApplication } from "@/lib/google-ads";
+import { reportSavedApplication } from "@/lib/google-ads";
 
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -211,9 +211,7 @@ export function ApplyModal({ jobId, jobTitle, onOpen }: ApplyModalProps) {
           );
         }
 
-        const saved = await response.json();
-        if (saved.success !== true) throw new Error("Die Speicherung wurde nicht bestätigt.");
-        trackSavedApplication(saved.conversionId);
+        await reportSavedApplication(response);
 
         setIsSubmitting(false);
         setIsSuccess(true);
