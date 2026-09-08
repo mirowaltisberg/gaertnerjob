@@ -40,6 +40,11 @@ const nextConfig: NextConfig = {
         destination: "https://gaertnerjob.ch/:path*",
         permanent: true,
       },
+      {
+        source: "/gaertner-jobs/:city",
+        destination: "/gartenbau-jobs/:city",
+        permanent: true,
+      },
       ...cantonAliases.map(([from, to]) => ({
         source: `/gaertnerjobs/:role/${from}`,
         destination: `/gaertnerjobs/:role/${to}`,

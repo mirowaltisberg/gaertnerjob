@@ -66,7 +66,7 @@ export default function NaehePage() {
             { GAERTNER_CITIES.map((c) => (
               <Link
                 key={c.slug}
-                href={`/gaertner-jobs/${c.slug}`}
+                href={`/gartenbau-jobs/${c.slug}`}
                 className="link-tile block p-4 pr-10 hover:border-primary/50 transition"
               >
                 <div className="font-semibold text-slate-900 mb-1">Gärtner Jobs {c.name}</div>

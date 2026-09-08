@@ -41,11 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
-    alternates: { canonical: `/gaertner-jobs/${city.slug}` },
+    alternates: { canonical: `/gartenbau-jobs/${city.slug}` },
     openGraph: {
       title,
       description,
-      url: `/gaertner-jobs/${city.slug}`,
+      url: `/gartenbau-jobs/${city.slug}`,
       type: "website",
       locale: "de_CH",
     },
@@ -76,7 +76,7 @@ export default async function GaertnerCityPage({ params }: PageProps) {
         "@type": "ListItem",
         position: 2,
         name: `Gärtner Jobs ${city.name}`,
-        item: `${SITE_URL}/gaertner-jobs/${city.slug}`,
+        item: `${SITE_URL}/gartenbau-jobs/${city.slug}`,
       },
     ],
   };
@@ -211,7 +211,7 @@ export default async function GaertnerCityPage({ params }: PageProps) {
             {GAERTNER_CITIES.filter((item) => item.slug !== city.slug).map((item) => (
               <Link
                 key={item.slug}
-                href={`/gaertner-jobs/${item.slug}`}
+                href={`/gartenbau-jobs/${item.slug}`}
                 className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:border-primary/40 hover:text-primary transition"
               >
                 Gärtner Jobs {item.name}
